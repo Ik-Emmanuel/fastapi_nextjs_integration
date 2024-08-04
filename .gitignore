@@ -38,3 +38,4 @@ next-env.d.ts
 .venv/*
 *__pycache__/*
 __pycache__/
+fastapi_backend/api/.env
