@@ -45,6 +45,17 @@ def create_access_token(username: str, user_id: int, expires_delta: timedelta):
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_user(user_request: UserCreateRequest, db: db_dependency):
+
+    # // check if user already exists
+    user = db.query(User).filter(User.username == user_request.username).first()
+    if user:
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Username already exists",
+        )
+
+    print("user_request", user_request)
     create_user_model = User(
         username=user_request.username,
         hashed_password=bcrypt_context.hash(user_request.password),

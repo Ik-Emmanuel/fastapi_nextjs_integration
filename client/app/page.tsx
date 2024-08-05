@@ -1,113 +1,296 @@
+"use client";
 import Image from "next/image";
+import ProtectedRoutes from "./components/ProtectedRoutes";
+import axios from "axios";
+import { useContext, useState, useEffect } from "react";
+import AuthContext from "./context/AuthContext";
 
 export default function Home() {
+  const { user, logout } = useContext(AuthContext);
+  const [workouts, setWorkouts] = useState([]);
+  const [routines, setRoutines] = useState([]);
+  const [error, setError] = useState<string | null>(null);
+  const [workoutName, setWorkoutName] = useState("");
+  const [workoutDescription, setWorkoutDescription] = useState("");
+  const [routineName, setRoutineName] = useState("");
+  const [routineDescription, setRoutineDescription] = useState("");
+  const [selectedWorkouts, setSelectedWorkouts] = useState<
+    number[] | string[] | null
+  >([]);
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check if we're running in the browser environment
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token");
+      setToken(token);
+    }
+  }, []);
+
+  useEffect(() => {
+    const fetchWorkoutsAndRoutines = async () => {
+      try {
+        const [workoutsResponse, routinesResponse] = await Promise.all([
+          axios.get("http://localhost:8000/workouts/workouts", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+          axios.get("http://localhost:8000/routines", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+        ]);
+
+        setWorkouts(workoutsResponse.data);
+        setRoutines(routinesResponse.data);
+      } catch (error) {
+        console.log(error);
+        setError(JSON.stringify(error));
+      }
+    };
+
+    if (token) {
+      fetchWorkoutsAndRoutines();
+    }
+  }, [token, user]);
+
+  const handleCreateWorkout = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post(
+        "http://localhost:8000/workouts",
+        {
+          name: workoutName,
+          description: workoutDescription,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setWorkouts([...workouts, response.data]);
+      setWorkoutName("");
+      setWorkoutDescription("");
+    } catch (error) {
+      console.log(error);
+      setError(JSON.stringify(error));
+    }
+  };
+
+  const handleCreateRoutine = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    try {
+      const response = await axios.post(
+        "http://localhost:8000/routines",
+        {
+          name: routineName,
+          description: routineDescription,
+          workouts: selectedWorkouts,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setRoutineName("");
+      setRoutines([...routines, response.data]);
+      setRoutineDescription("");
+      setSelectedWorkouts([]);
+    } catch (error) {
+      console.log(error);
+      setError(JSON.stringify(error));
+    }
+  };
+
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedOptions = Array.from(e.target.selectedOptions, (option) =>
+      parseInt(option.value)
+    );
+    setSelectedWorkouts(selectedOptions);
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <ProtectedRoutes>
+      <main>
+        <div className="flex justify-center items-center h-full mx-auto mt-10 w-[80%]">
+          <div className="flex justify-between items-center w-full px-10">
+            <p className="text-cyan-500 font-semibold">Hello, User</p>
+            <button
+              className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-md"
+              onClick={logout}
+            >
+              Logout
+            </button>
+          </div>
         </div>
-      </div>
+        <div className="w-full mt-10 px-[100px] mb-8">
+          <h1 className="text-3xl font-bold">Available Workouts</h1>
+          <p className="text-gray-500">Your listed workouts</p>
 
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-1 ">
+            {workouts.map((workout: any) => (
+              <div
+                key={workout.id}
+                className="w-full  bg-slate-900  rounded-lg p-4"
+              >
+                <h1 className="text-lg font-bold">{workout.name}</h1>
+                <p className="text-gray-500 text-[12px]">
+                  {workout.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
 
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+        <div className="w-full mt-10 px-[100px] mb-8">
+          <h1 className="text-3xl font-bold">Your Routines</h1>
+          <p className="text-gray-500">Your set workout routines</p>
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-1 ">
+            {routines.map((routine: any) => (
+              <div
+                key={routine.id}
+                className="w-full mt-2 bg-slate-900  rounded-lg p-4"
+              >
+                <h1 className="text-lg font-bold">{routine.name}</h1>
+                <p className="text-gray-500 text-[12px]">
+                  {routine.description}
+                </p>
+                <p className="text-cyan-500 text-[12px]">
+                  {routine.workouts.length} Workouts
+                </p>
+                <div className="mt-4">
+                  {routine.workouts.map((workout: any) => (
+                    <p
+                      key={workout.id}
+                      className="text-gray-500 text-[14px] px-2"
+                    >
+                      <span className="text-cyan-500 text-xl">•</span>{" "}
+                      {workout.name}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-1 mt-10 mb-10">
+          <div className="w-full mt-10 px-[100px]">
+            <h1 className="text-3xl font-bold">Create Workouts</h1>
+            <p className="text-gray-500">Create your workouts below</p>
+            <form onSubmit={handleCreateWorkout} className="w-full">
+              <div className="mb-4 mt-6">
+                <label
+                  htmlFor="workoutName"
+                  className="block text-sm font-medium text-cyan-700"
+                >
+                  Name
+                </label>
+                <input
+                  type="text"
+                  id="workoutName"
+                  value={workoutName}
+                  onChange={(e) => setWorkoutName(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 bg-white  text-black rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label
+                  htmlFor="workoutDescription"
+                  className="block text-sm font-medium text-cyan-700"
+                >
+                  Description
+                </label>
+                <input
+                  type="text"
+                  id="workoutDescription"
+                  value={workoutDescription}
+                  onChange={(e) => setWorkoutDescription(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 bg-white  text-black rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full py-2 px-4 bg-cyan-500 hover:bg-cyan-700 text-white font-bold rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              >
+                Create Workout
+              </button>
+            </form>
+          </div>
+          <div className="w-full mt-10 px-[100px]">
+            <h1 className="text-3xl font-bold">Add Routines</h1>
+            <p className="text-gray-500">
+              create your own routines and track your progress
+            </p>
+            <form onSubmit={handleCreateRoutine}>
+              <div className="mb-4 mt-6">
+                <label
+                  htmlFor="workoutName"
+                  className="block text-sm font-medium text-cyan-700"
+                >
+                  Name
+                </label>
+                <input
+                  type="text"
+                  id="routineName"
+                  value={routineName}
+                  onChange={(e) => setRoutineName(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 bg-white  text-black rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label
+                  htmlFor="workoutDescription"
+                  className="block text-sm font-medium text-cyan-700"
+                >
+                  Description
+                </label>
+                <input
+                  type="text"
+                  id="routineDescription"
+                  value={routineDescription}
+                  onChange={(e) => setRoutineDescription(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 bg-white  text-black rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                />
+                <div className="mb-4 mt-6">
+                  <label
+                    htmlFor="workouts"
+                    className="block text-sm font-medium text-cyan-700"
+                  >
+                    Select Workouts
+                  </label>
+                  <select
+                    multiple
+                    className="mt-1 block w-full px-3 py-2 bg-white text-black rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    onChange={handleSelectChange}
+                    name="workouts"
+                    id="workouts"
+                  >
+                    {workouts.map((workout: any) => (
+                      <option key={workout.id} value={workout.id}>
+                        {workout.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="w-full py-2 px-4 bg-cyan-500 hover:bg-cyan-700 text-white font-bold rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              >
+                Create Routine
+              </button>
+            </form>
+          </div>
+        </div>
+      </main>
+    </ProtectedRoutes>
   );
 }
